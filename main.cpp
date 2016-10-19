@@ -30,6 +30,7 @@
  */
 
 #include <Scene.h>
+#include <util.h>
 
 #include <numeric>
 #include <stdio.h>
@@ -45,13 +46,15 @@ namespace proto {
   bool do_arrange = false;
   bool do_mipmap = false;
   std::vector <std::string> image_paths;
-  double test_length = 60.0;
+  double test_length = 10.0;
   std::string test_mode;
   std::vector <float> perf_data;
   Scene *scene;
 }
 
 using namespace proto;
+
+bool Util::in_test_mode = false;
 
 void help_msg (std::string prog)
 {
@@ -78,6 +81,8 @@ void validate_args ()
     swap_interval = 0;
   if (!(gl_version == 3 || gl_version == 4))
     gl_version = 4;
+  if (!test_mode.empty())
+    Util::in_test_mode = true;
 }
 
 void parse_args (int argc, char* argv[])

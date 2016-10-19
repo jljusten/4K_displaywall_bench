@@ -7,6 +7,8 @@
 #include <vector>
 #include <cstring>
 
+#include <png/lodepng.h>
+
 
 #define GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX 0x9049
 #define GPU_MEMORY_INFO_EVICTED_MEMORY_NVX 0x904B
@@ -16,9 +18,12 @@
 
 namespace proto {
 
+
 class Util {
 
 public:
+static bool in_test_mode;
+
 static bool compileShader (GLuint &shader, GLenum type,
                              const char *src)
 { shader = glCreateShader (type);
@@ -76,13 +81,13 @@ static std::string loadShaderSourceFromFile (const char *filepath)
 }
 
 
-static float query_gpu_mem_usage_nvidia(bool test_mode)
+static float query_gpu_mem_usage_nvidia()
 {
   GLint minfo;
   glGetIntegerv(GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, &minfo);
   GLint evicted;
   glGetIntegerv(GPU_MEMORY_INFO_EVICTED_MEMORY_NVX, &evicted);
-  if (test_mode)
+  if (in_test_mode)
     return float(minfo/1024);
   else
     { printf("GL nvidia total available memory %d MB  (evicted memory %d) \n", minfo/1024, evicted/1024);
@@ -90,11 +95,11 @@ static float query_gpu_mem_usage_nvidia(bool test_mode)
     }
 }
 
-static float query_gpu_mem_usage_amd(bool test_mode)
+static float query_gpu_mem_usage_amd()
 {
   GLint minfo[4];
   glGetIntegerv(GL_TEXTURE_FREE_MEMORY_ATI, minfo);
-  if (test_mode)
+  if (in_test_mode)
     return float(minfo[0]/1024);
   else
     { printf("GL amd total free memory in pool %d MB\n", minfo[0]/1024);
@@ -104,15 +109,16 @@ static float query_gpu_mem_usage_amd(bool test_mode)
 
 static float query_memory(bool test_mode)
 {
+  in_test_mode = test_mode;
   std::string vendor_string ( reinterpret_cast<const char *>(glGetString(GL_VENDOR)));
   if (!test_mode)
     std::cout << vendor_string << std::endl;
   if (vendor_string . find ("nvidia") != std::string::npos ||
       vendor_string . find ("NVIDIA") != std::string::npos)
-    return query_gpu_mem_usage_nvidia (test_mode);
+    return query_gpu_mem_usage_nvidia ();
   else if (vendor_string . find ("ati") != std::string::npos ||
            vendor_string . find ("amd") != std::string::npos)
-    return query_gpu_mem_usage_amd (test_mode);
+    return query_gpu_mem_usage_amd ();
   else if (!test_mode)
     { printf("unsupported graphics card vendor\n");
       return 0.0f;
@@ -120,7 +126,19 @@ static float query_memory(bool test_mode)
 }
 
 
+static bool decode_png_image(std::vector<GLubyte> &image_data,
+                             unsigned int &img_width,
+                             unsigned int &img_height,
+                             const std::string &img_path)
+{
+  unsigned error = lodepng::decode(image_data, img_width, img_height, img_path.c_str());
+  if (error && !in_test_mode)
+    std::cout << "lodepng decode error " << error << ": " << lodepng_error_text(error) << std::endl;
+  return error ? false : true;
+}
+
 };
+
 
 }
 

@@ -33,6 +33,7 @@
 #define __TexQuad__proto__
 
 #include <iostream>
+#include <vector>
 
 // glad extension loader: https://github.com/Dav1dde/glad
 #include <glad/glad.h>
@@ -46,7 +47,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 
-#include "util.h"
 
 namespace proto {
 
@@ -60,6 +60,12 @@ public:
            bool mipmap = false,
            bool arrange = false
           );
+  TexQuad (const float win_aspect = 16.0f/9.0f,
+           const glm::vec3 &pos = glm::vec3(0.0f),
+           const glm::vec2 &scale = glm::vec2(1.0f),
+           bool mipmap = false,
+           bool arrange = false
+          );
   ~TexQuad ();
 
   void Setup ();
@@ -67,6 +73,10 @@ public:
   void Bind ();
   void Unbind ();
 
+  void SetImageData (const std::vector<GLubyte> &imgdata,
+                     unsigned int imgwidth,
+                     unsigned int imgheight)
+    { image_data = imgdata; img_width = imgwidth; img_height = imgheight; }
   void SetViewMatrix (GLint uniform, const glm::mat4 &mat)
     { uniform_modelview = uniform;  view = mat; }
 
@@ -86,6 +96,7 @@ protected:
   glm::vec3 position;
   glm::vec2 scale;
 
+  std::vector<GLubyte> image_data;
   unsigned int img_width;
   unsigned int img_height;
 

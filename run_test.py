@@ -52,7 +52,7 @@ with open(csvfile, 'wb') as cf:
 
 #basic 3x 4K viewport test
   data = subprocess.check_output(
-           ["./4K_displaywall_bench", "-width", "2880", "-height", "540",
+           ["./4K_displaywall_bench", "-width", "11520", "-height", "2160",
                                       "-swap_interval", "0",
                                       "-testmode", "fps"
                                       ], cwd=local_cwd)
@@ -69,6 +69,7 @@ with open(csvfile, 'wb') as cf:
            ["./4K_displaywall_bench", "-width", "11520", "-height", "2160",
                                       "-swap_interval", "0",
                                       "-mipmap", "true", "-layout", "true",
+                                      "-testmode", "fps",
                                       "-i", "./images/bubble4K.png",
                                       ], cwd=local_cwd)
   if append_to_existing_data:
@@ -83,6 +84,7 @@ with open(csvfile, 'wb') as cf:
            ["./4K_displaywall_bench", "-width", "11520", "-height", "2160",
                                       "-swap_interval", "0",
                                       "-mipmap", "true", "-layout", "true",
+                                      "-testmode", "fps",
                                       "-i", "./images/bubble4K.png",
                                       "-i", "./images/bubble4K.png",
                                       ], cwd=local_cwd)
@@ -98,6 +100,7 @@ with open(csvfile, 'wb') as cf:
            ["./4K_displaywall_bench", "-width", "11520", "-height", "2160",
                                       "-swap_interval", "0",
                                       "-mipmap", "true", "-layout", "true",
+                                      "-testmode", "fps",
                                       "-i", "./images/bubble4K.png",
                                       "-i", "./images/bubble4K.png",
                                       "-i", "./images/bubble4K.png",
@@ -114,6 +117,7 @@ with open(csvfile, 'wb') as cf:
            ["./4K_displaywall_bench", "-width", "11520", "-height", "2160",
                                       "-swap_interval", "0",
                                       "-mipmap", "true", "-layout", "true",
+                                      "-testmode", "fps",
                                       "-i", "./images/bubble4K.png",
                                       "-i", "./images/bubble4K.png",
                                       "-i", "./images/bubble4K.png",
@@ -131,6 +135,7 @@ with open(csvfile, 'wb') as cf:
            ["./4K_displaywall_bench", "-width", "11520", "-height", "2160",
                                       "-swap_interval", "0",
                                       "-mipmap", "true", "-layout", "true",
+                                      "-testmode", "fps",
                                       "-i", "./images/bubble4K.png",
                                       "-i", "./images/bubble4K.png",
                                       "-i", "./images/bubble4K.png",
@@ -149,6 +154,7 @@ with open(csvfile, 'wb') as cf:
            ["./4K_displaywall_bench", "-width", "11520", "-height", "2160",
                                       "-swap_interval", "0",
                                       "-mipmap", "true", "-layout", "true",
+                                      "-testmode", "fps",
                                       "-i", "./images/bubble4K.png",
                                       "-i", "./images/bubble4K.png",
                                       "-i", "./images/bubble4K.png",
