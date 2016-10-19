@@ -175,7 +175,6 @@ void Scene::Load ()
 
   // make texquads
   const size_t num_images = image_paths.size();
-  std::cout << "num images " << num_images << " (" << aspect << ")" << std::endl;
   size_t rows = 0, columns = 0;
   if (aspect > 1.0)
    {
@@ -193,7 +192,6 @@ void Scene::Load ()
      rows = num_images / root + (num_images % root ? 1 : 0);
      columns = root;
    }
-  std::cout << "Geometry: " << columns << " x " << rows << std::endl;
 
   glm::vec2 starting_scale(1.0f);  // camera set for vertically centered -1 to 1 square
   if (do_arrange)
@@ -211,7 +209,6 @@ void Scene::Load ()
   if (aspect < 1.0)
     starting_scale *= aspect;
 
-  std::cout << "Starting scale " <<  glm::to_string (starting_scale) << std::endl;
 
   if (do_arrange)
    { const float pad = 0.1;

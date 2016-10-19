@@ -76,34 +76,47 @@ static std::string loadShaderSourceFromFile (const char *filepath)
 }
 
 
-static void query_gpu_mem_usage_nvidia()
+static float query_gpu_mem_usage_nvidia(bool test_mode)
 {
   GLint minfo;
   glGetIntegerv(GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, &minfo);
   GLint evicted;
   glGetIntegerv(GPU_MEMORY_INFO_EVICTED_MEMORY_NVX, &evicted);
-  printf("GL nvidia total available memory %d MB  (evicted memory %d) \n", minfo/1024, evicted/1024);
+  if (test_mode)
+    return float(minfo/1024);
+  else
+    { printf("GL nvidia total available memory %d MB  (evicted memory %d) \n", minfo/1024, evicted/1024);
+      return 0.0f;
+    }
 }
 
-static void query_gpu_mem_usage_amd()
+static float query_gpu_mem_usage_amd(bool test_mode)
 {
   GLint minfo[4];
   glGetIntegerv(GL_TEXTURE_FREE_MEMORY_ATI, minfo);
-  printf("GL amd total free memory in pool %d MB\n", minfo[0]/1024);
+  if (test_mode)
+    return float(minfo[0]/1024);
+  else
+    { printf("GL amd total free memory in pool %d MB\n", minfo[0]/1024);
+      return 0.0f;
+    }
 }
 
-static void query_memory()
+static float query_memory(bool test_mode)
 {
   std::string vendor_string ( reinterpret_cast<const char *>(glGetString(GL_VENDOR)));
-  std::cout << vendor_string << std::endl;
+  if (!test_mode)
+    std::cout << vendor_string << std::endl;
   if (vendor_string . find ("nvidia") != std::string::npos ||
       vendor_string . find ("NVIDIA") != std::string::npos)
-    query_gpu_mem_usage_nvidia ();
+    return query_gpu_mem_usage_nvidia (test_mode);
   else if (vendor_string . find ("ati") != std::string::npos ||
            vendor_string . find ("amd") != std::string::npos)
-    query_gpu_mem_usage_amd ();
-  else
-    printf("unsupported graphics card vendor\n");
+    return query_gpu_mem_usage_amd (test_mode);
+  else if (!test_mode)
+    { printf("unsupported graphics card vendor\n");
+      return 0.0f;
+    }
 }
 
 
