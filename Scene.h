@@ -33,6 +33,7 @@
 #define __Scene__proto__
 
 #include <iostream>
+#include <vector>
 
 // glad extension loader: https://github.com/Dav1dde/glad
 #include <glad/glad.h>
@@ -46,7 +47,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 
-#include "util.h"
 
 namespace proto {
 

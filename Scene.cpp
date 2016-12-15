@@ -32,6 +32,7 @@
 
 #include "Scene.h"
 #include "TexQuad.h"
+#include "util.h"
 
 #include <algorithm>
 #include <fstream>
@@ -45,11 +46,9 @@
 #include <glm/gtx/string_cast.hpp>
 #include <cmath>
 
-#include <png/lodepng.h>
 
 
 using namespace proto;
-
 
 
 Scene::Scene ()
@@ -175,7 +174,6 @@ void Scene::Load ()
 
   // make texquads
   const size_t num_images = image_paths.size();
-  std::cout << "num images " << num_images << " (" << aspect << ")" << std::endl;
   size_t rows = 0, columns = 0;
   if (aspect > 1.0)
    {
@@ -193,7 +191,6 @@ void Scene::Load ()
      rows = num_images / root + (num_images % root ? 1 : 0);
      columns = root;
    }
-  std::cout << "Geometry: " << columns << " x " << rows << std::endl;
 
   glm::vec2 starting_scale(1.0f);  // camera set for vertically centered -1 to 1 square
   if (do_arrange)
@@ -211,7 +208,19 @@ void Scene::Load ()
   if (aspect < 1.0)
     starting_scale *= aspect;
 
-  std::cout << "Starting scale " <<  glm::to_string (starting_scale) << std::endl;
+
+  std::vector<GLubyte> image_data;
+  unsigned int img_width, img_height;
+  // cache decoded image data if multiple of same image
+  bool cache_data = num_images > 1 ? true : false;
+  for (int i = 1; i < image_paths.size(); i++)
+    if (image_paths[i] != image_paths[0])
+      { cache_data = false;
+        break;
+      }
+  if (cache_data)
+    cache_data = Util::decode_png_image(image_data, img_width, img_height, image_paths[0]);
+
 
   if (do_arrange)
    { const float pad = 0.1;
@@ -219,22 +228,35 @@ void Scene::Load ()
      glm::vec3 pos(0.0f);
      int i = 0;
      for (float r = float(rows-1)*0.5; r > -float(rows)*0.5; r -= 1.0f)
-       { std::cout << "row " << r << std::endl;
+       { //std::cout << "row " << r << std::endl;
          pos.y = size * r;
          for (float c = -float(columns-1)*0.5; c < float(columns)*0.5; c += 1.0f)
             { if (i < num_images)
-              { std::cout << "col " << c << std::endl;
+              { //std::cout << "col " << c << std::endl;
                 pos.x = size * c;
-                std::cout << glm::to_string(pos) << std::endl;
-                TexQuad *tq = new TexQuad(image_paths[i],
-                                          aspect,
-                                          pos,
-                                          starting_scale,
-                                          do_mipmap,
-                                          do_arrange);
-                tq -> Setup ();
-                tq -> SetViewMatrix (uniform_modelview, view);
-                texquads.push_back (tq);
+                //std::cout << glm::to_string(pos) << std::endl;
+                TexQuad *tq = NULL;
+                if (cache_data)
+                 { tq = new TexQuad (aspect,
+                                     pos,
+                                     starting_scale,
+                                     do_mipmap,
+                                     do_arrange);
+                   tq -> SetImageData (image_data, img_width, img_height);
+                 }
+                else
+                 { tq = new TexQuad (image_paths[i],
+                                     aspect,
+                                     pos,
+                                     starting_scale,
+                                     do_mipmap,
+                                     do_arrange);
+                 }
+                if (tq)
+                 { tq -> Setup ();
+                   tq -> SetViewMatrix (uniform_modelview, view);
+                   texquads.push_back (tq);
+                 }
                 i++;
               }
            }
@@ -242,15 +264,28 @@ void Scene::Load ()
    }
   else
    { for (int i = 0; i < image_paths.size(); i++)
-      { TexQuad *tq = new TexQuad(image_paths[i],
-                                  aspect,
-                                  glm::vec3(0.0f),
-                                  starting_scale,
-                                  do_mipmap,
-                                  do_arrange);
-        tq -> Setup ();
-        tq -> SetViewMatrix (uniform_modelview, view);
-        texquads.push_back (tq);
+      { TexQuad *tq = NULL;
+        if (cache_data)
+         { tq = new TexQuad(aspect,
+                            glm::vec3(0.0f),
+                            starting_scale,
+                            do_mipmap,
+                            do_arrange);
+           tq -> SetImageData (image_data, img_width, img_height);
+         }
+        else
+         { tq = new TexQuad(image_paths[i],
+                            aspect,
+                            glm::vec3(0.0f),
+                            starting_scale,
+                            do_mipmap,
+                            do_arrange);
+         }
+        if (tq)
+         { tq -> Setup ();
+           tq -> SetViewMatrix (uniform_modelview, view);
+           texquads.push_back (tq);
+         }
       }
    }
 }

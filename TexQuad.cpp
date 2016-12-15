@@ -41,8 +41,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include <png/lodepng.h>
-
+#include "util.h"
 
 using namespace proto;
 
@@ -64,6 +63,19 @@ TexQuad::TexQuad (const std::string &path,
 {
 }
 
+TexQuad::TexQuad (const float win_aspect,
+                  const glm::vec3 &pos,
+                  const glm::vec2 &sc,
+                  bool mipmap,
+                  bool arrange)
+ : window_aspect(win_aspect),
+   position(pos),
+   scale(sc),
+   do_mipmap(mipmap),
+   do_arrange(arrange)
+{
+}
+
 TexQuad::~TexQuad ()
 {
   Unload ();
@@ -71,20 +83,20 @@ TexQuad::~TexQuad ()
 
 void TexQuad::Load ()
 {
-
+  bool result = true;
   // Load texture: load image, generate texture, upload texture
-  std::vector<GLubyte> image_data;
-  unsigned error = lodepng::decode(image_data, img_width, img_height, img_path.c_str());
-
-  if (error)
-    std::cout << "lodepng decode error " << error << ": " << lodepng_error_text(error) << std::endl;
-  else
-    std::cout << "finished image IO and decode" << std::endl;
+  if (image_data.size() == 0)
+    result = Util::decode_png_image(image_data, img_width, img_height, img_path);
+  if (!result || image_data.size() == 0)
+   {  std::cout << "No image data!" << std::endl;
+      return;
+   }
 
 
   glGenTextures (1, &texName);
   glBindTexture (GL_TEXTURE_2D, texName);
-  std::cout << "Loading TexQuad " << img_path << " texture id is " << texName << std::endl;
+  if (!Util::in_test_mode)
+    std::cout << "Loading TexQuad " << img_path << " texture id is " << texName << std::endl;
   glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);

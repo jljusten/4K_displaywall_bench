@@ -30,7 +30,9 @@
  */
 
 #include <Scene.h>
+#include <util.h>
 
+#include <numeric>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -40,14 +42,19 @@ namespace proto {
   int width = 11520;
   int height = 2160;
   int swap_interval = 0;
-  int gl_version = 4;
+  int gl_version = 3;
   bool do_arrange = false;
   bool do_mipmap = false;
   std::vector <std::string> image_paths;
+  double test_length = 10.0;
+  std::string test_mode;
+  std::vector <float> perf_data;
   Scene *scene;
 }
 
 using namespace proto;
+
+bool Util::in_test_mode = false;
 
 void help_msg (std::string prog)
 {
@@ -59,6 +66,8 @@ void help_msg (std::string prog)
   std::cout << "    -i [image path] (for each image you want to display)" << std::endl;
   std::cout << "    -layout [true | false] (true = grid, false = overlap)" << std::endl;
   std::cout << "    -mipmap [true | false]" << std::endl;
+  std::cout << "    -testlength [seconds] (5.0 seconds default)" << std::endl;
+  std::cout << "    -testmode [fps | vram] (compute average of specified for testlength" << std::endl;
   exit (EXIT_SUCCESS);
 }
 
@@ -71,7 +80,9 @@ void validate_args ()
   if (!(swap_interval == 0 || swap_interval == 1))
     swap_interval = 0;
   if (!(gl_version == 3 || gl_version == 4))
-    gl_version = 4;
+    gl_version = 3;
+  if (!test_mode.empty())
+    Util::in_test_mode = true;
 }
 
 void parse_args (int argc, char* argv[])
@@ -96,6 +107,10 @@ void parse_args (int argc, char* argv[])
            do_arrange = (!strcmp(argv[i+1], "true")) ? true : false;
          else if (!strcmp(argv[i], "-mipmap"))
            do_mipmap = (!strcmp(argv[i+1], "true")) ? true : false;
+         else if (!strcmp(argv[i], "-testlength"))
+           test_length = atof(argv[i+1]);
+         else if (!strcmp(argv[i], "-testmode"))
+           test_mode = argv[i+1];
          else if (!strcmp(argv[i], "-help") ||
                   !strcmp(argv[i], "--help"))
            help_msg (argv[0]);
@@ -141,22 +156,29 @@ static void cursor_pos_callback (GLFWwindow *window, double xpos, double ypos)
   //printf ("mouse pos %f  x  %f\n", xpos/width, (height - ypos)/height);
 }
 
-static void output_fps (GLFWwindow* window)
+static float output_perf_data (GLFWwindow* window)
 {
   static double t_start = glfwGetTime ();
   static int64_t frame_cnt = 0;
   const double reporting_interval = 1.0;  // in seconds
 
+  float result = 0.0f;
+
   double t_curr = glfwGetTime ();
   if (t_curr - t_start > reporting_interval)
-  { std::cout << "frame count is " << frame_cnt << std::endl;
-    double fps = static_cast<double>(frame_cnt) / (t_curr - t_start);
+  { double fps = static_cast<double>(frame_cnt) / (t_curr - t_start);
     std::ostringstream oss;
     oss << fps;
     std::string fps_string = "FPS: ";
     fps_string += oss.str();
-    std::cout << fps_string << std::endl;
-    Util::query_memory();
+    if (test_mode == "fps")
+      result = static_cast<float>(fps);
+    else if (test_mode == "vram")
+      result = Util::query_memory(true);
+    else
+      { Util::query_memory(false);
+        std::cout << fps_string << std::endl;
+      }
     glfwSetWindowTitle(window, fps_string.c_str());
     frame_cnt = 0;
     t_start = glfwGetTime();
@@ -165,6 +187,7 @@ static void output_fps (GLFWwindow* window)
   {
     frame_cnt++;
   }
+  return result;
 }
 
 
@@ -208,15 +231,16 @@ int main (int argc, char* argv[])
   glfwGetFramebufferSize (window, &width, &height);
   glViewport (0, 0, width, height);
 
-  int mon_count;
-  GLFWmonitor** monitors = glfwGetMonitors (&mon_count);
-  for (int i = 0; i < mon_count; ++i)
-  {
-    const GLFWvidmode* vmode = glfwGetVideoMode(*monitors);
-    std::cout << "video mode for monitor " << i << " reports " <<
-	         vmode->refreshRate << " refresh rate" << std::endl;
-    monitors++;
-  }
+  if (test_mode.empty())
+   { int mon_count;
+     GLFWmonitor** monitors = glfwGetMonitors (&mon_count);
+     for (int i = 0; i < mon_count; ++i)
+      { const GLFWvidmode* vmode = glfwGetVideoMode(*monitors);
+        std::cout << "video mode for monitor " << i << " reports " <<
+	             vmode->refreshRate << " refresh rate" << std::endl;
+        monitors++;
+      }
+   }
 
   glfwSetKeyCallback (window, key_callback);
   glfwSetCursorPosCallback (window, cursor_pos_callback);
@@ -246,13 +270,26 @@ int main (int argc, char* argv[])
   scene -> SetImagePaths (image_paths, do_arrange, do_mipmap);
   scene -> Setup ();
 
-  while (!glfwWindowShouldClose (window))
+  double test_start = glfwGetTime ();
+  while (!glfwWindowShouldClose (window) &&
+         (test_mode.empty() ? true : (glfwGetTime () - test_start < test_length)))
     { scene -> Draw ();
-      output_fps (window);
+      if (test_mode.empty())
+       { output_perf_data (window); }
+      else
+       { float current_reading = output_perf_data (window);
+         if (current_reading > 0.01f)
+           perf_data.push_back(current_reading);
+       }
       glfwSwapBuffers (window);
       glfwPollEvents ();
     }
 
+  if (!test_mode.empty())
+   { float mean = std::accumulate(perf_data.begin(), perf_data.end(), 0.0f) /
+               float(perf_data.size());
+     std::cout << mean;
+   }
 
   glfwDestroyWindow (window);
 
