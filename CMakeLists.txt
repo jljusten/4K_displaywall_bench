@@ -20,6 +20,7 @@ else()
   find_package(LibDL REQUIRED)
   find_package(PkgConfig REQUIRED)
   pkg_search_module(GLFW REQUIRED glfw3)
+  pkg_search_module(GLM REQUIRED glm)
   # glm is header-only
   set(dep_includes ${LIBDL_INCLUDE_DIR} ${GLFW_INCLUDE_DIRS})
   set(dep_libraries ${LIBDL_LIBRARY} ${GLFW_LIBRARIES})
