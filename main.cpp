@@ -42,7 +42,7 @@ namespace proto {
   int width = 11520;
   int height = 2160;
   int swap_interval = 0;
-  int gl_version = 4;
+  int gl_version = 3;
   bool do_arrange = false;
   bool do_mipmap = false;
   std::vector <std::string> image_paths;
@@ -80,7 +80,7 @@ void validate_args ()
   if (!(swap_interval == 0 || swap_interval == 1))
     swap_interval = 0;
   if (!(gl_version == 3 || gl_version == 4))
-    gl_version = 4;
+    gl_version = 3;
   if (!test_mode.empty())
     Util::in_test_mode = true;
 }
