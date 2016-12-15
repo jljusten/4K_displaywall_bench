@@ -12,15 +12,15 @@ os.chdir(local_cwd)
 distname, version, Id = platform.linux_distribution()
 print distname, version
 
-csvfile = ''
+csvfile = 'report.csv'
 try:
   opts, args = getopt.getopt(sys.argv[1:], "hf:", ["csvfile="])
 except getopt.GetoptError:
-  print 'run_test.py -i <inputfile> -o <outputfile>'
+  print 'run_test.py --csvfile <outputfile>'
   sys.exit(2)
 for opt, arg in opts:
   if opt == '-h':
-    print 'run_test.py -i <inputfile> -o <outputfile>'
+    print 'run_test.py --csvfile <outputfile>'
     sys.exit()
   elif opt in ("-f", "--csvfile"):
     csvfile = arg
@@ -172,3 +172,6 @@ with open(csvfile, 'wb') as cf:
     writer.writerow(row)
   else:
     writer.writerow(["10", data])
+
+
+print csvfile, " has been written with test data."
