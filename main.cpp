@@ -228,7 +228,28 @@ int main (int argc, char* argv[])
   // enable vsync (disable for benchmarking, set to 0)
    glfwSwapInterval (swap_interval);
 
-  glfwGetFramebufferSize (window, &width, &height);
+  int win_width;
+  int win_height;
+  glfwGetFramebufferSize (window, &win_width, &win_height);
+  if (test_mode.empty())
+    printf("window size: %d x %d\n", win_width, win_height);
+
+  GLuint fb = 0, tex = 0;
+  if (win_width != width || win_height != height) {
+    glCreateFramebuffers(1, &fb);
+    assert(fb != 0);
+    glCreateTextures(GL_TEXTURE_2D, 1, &tex);
+    assert(tex != 0);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0,
+                 GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glBindFramebuffer(GL_FRAMEBUFFER, fb);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                           tex, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    assert(glGetError() == GL_NO_ERROR);
+  }
+
   glViewport (0, 0, width, height);
 
   if (test_mode.empty())
@@ -273,7 +294,19 @@ int main (int argc, char* argv[])
   double test_start = glfwGetTime ();
   while (!glfwWindowShouldClose (window) &&
          (test_mode.empty() ? true : (glfwGetTime () - test_start < test_length)))
-    { scene -> Draw ();
+    {
+      if (fb != 0) {
+        glBindFramebuffer(GL_FRAMEBUFFER, fb);
+      }
+      scene -> Draw ();
+      if (fb != 0) {
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, fb);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+        glBlitFramebuffer(0, 0, width, height,
+                          0, 0, win_width, win_height,
+                          GL_COLOR_BUFFER_BIT, GL_NEAREST);
+        assert(glGetError() == GL_NO_ERROR);
+      }
       if (test_mode.empty())
        { output_perf_data (window); }
       else
