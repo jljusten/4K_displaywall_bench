@@ -25,17 +25,18 @@ for opt, arg in opts:
   elif opt in ("-f", "--csvfile"):
     csvfile = arg
 
-def run_one_test(num_images, image_file):
-    args = ["./4K_displaywall_bench", "-width", "11520", "-height", "2160",
-            "-testmode", "fps"]
+def run_one_test(width, height, num_images, image_file):
+    args = ["./4K_displaywall_bench", "-width", str(width),
+            "-height", str(height), "-testmode", "fps"]
     if num_images > 0:
         args += ["-swap_interval", "0", "-mipmap", "true", "-layout", "true"]
     for i in range(num_images):
         args += ["-i", image_file]
+    size = '%dx%d' % (width, height)
     if num_images == 0:
-        print 'Running with 0 images'
+        print 'Running with 0 images at', size
     else:
-        print 'Running with', num_images, 'copies of', image_file
+        print 'Running with', num_images, 'copies of', image_file, 'at', size
     return subprocess.check_output(args, cwd=local_cwd)
 
 def read_rows():
@@ -65,15 +66,16 @@ if len(rows) != number_of_rows:
         cf.close()
     rows = read_rows()
 
-def run_tests_for_size(rows, size):
-    column_label = ' '.join(("FPS", distname, version, size))
+def run_tests_for_size(rows, width, height, size):
+    res = '%dx%d' % (width, height)
+    column_label = ' '.join(("FPS", res, size))
     row = rows[0]
     row.append(column_label)
 
     #basic 3x 4K viewport test
     for i in range(len(num_images)):
         image_file = "./images/bubble" + size + ".png"
-        data = run_one_test(num_images[i], image_file)
+        data = run_one_test(width, height, num_images[i], image_file)
         row = rows[i + 1]
         row.append(data)
 
@@ -84,8 +86,10 @@ def write_csv(filename, rows):
             writer.writerow(row)
         cf.close()
 
-run_tests_for_size(rows, '1K')
-run_tests_for_size(rows, '4K')
+for width in (4*1024, 8*1024, 11520):
+    height = 2160
+    for image_size in ('1K', '4K'):
+        run_tests_for_size(rows, width, height, image_size)
 write_csv(csvfile, rows)
 
 print csvfile, " has been written with test data."
