@@ -291,6 +291,7 @@ int main (int argc, char* argv[])
   scene -> SetImagePaths (image_paths, do_arrange, do_mipmap);
   scene -> Setup ();
 
+  bool drawn = false;
   double test_start = glfwGetTime ();
   while (!glfwWindowShouldClose (window) &&
          (test_mode.empty() ? true : (glfwGetTime () - test_start < test_length)))
@@ -298,7 +299,10 @@ int main (int argc, char* argv[])
       if (fb != 0) {
         glBindFramebuffer(GL_FRAMEBUFFER, fb);
       }
-      scene -> Draw ();
+      if (fb == 0 || !drawn || 1) {
+        scene -> Draw ();
+        drawn = true;
+      }
       if (fb != 0) {
         glBindFramebuffer(GL_READ_FRAMEBUFFER, fb);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
