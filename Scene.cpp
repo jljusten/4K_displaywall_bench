@@ -47,7 +47,6 @@
 #include <cmath>
 
 
-
 using namespace proto;
 
 
@@ -307,8 +306,29 @@ void Scene::Unload ()
 void Scene::Setup ()
 { Load ();
   //glClearColor ( 0.0, 0.0, 0.0, 0.0 );  // uncomment for Windows
-  glClearColor ( 0.0, 0.1, 0.2, 0.0 );
+  glClearColor ( 1.0, 0.1, 0.2, 0.0 );
   glEnable (GL_DEPTH_TEST);
+  glEnable (GL_SCISSOR_TEST);
+
+  if (Util::blit) {
+    // render to texture
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glGenTextures(1, &renderTexName);
+    glBindTexture(GL_TEXTURE_2D, renderTexName);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, window_width, window_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glGenRenderbuffers(1, &depth_rbo);
+    glBindRenderbuffer(GL_RENDERBUFFER, depth_rbo);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, window_width, window_height);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_rbo);
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, renderTexName, 0);
+    GLenum DrawBuffers[1] = {GL_COLOR_ATTACHMENT0};
+    glDrawBuffers(1, DrawBuffers);
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+      std::cout << "Error in setting up Render-To-Texture" << std::endl;
+    }
 }
 
 void Scene::Update ()
@@ -316,12 +336,43 @@ void Scene::Update ()
 }
 
 void Scene::Draw ()
-{ glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+{
+  if (Util::blit) {
+    // Bind fbo
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glViewport(0, 0, window_width, window_height);
+
+    // will restrict the clear as well as draw
+    glScissor(Util::blit_rect[0], Util::blit_rect[1],
+              Util::blit_rect[2], Util::blit_rect[3]);  // sub-rect
+  }
+
+  // Draw
+  glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   for (int i = 0; i < texquads.size(); i++) {
     texquads[i] -> Update ();
     texquads[i] -> Bind ();
     glDrawElements (GL_TRIANGLE_STRIP, sizeof(index_array)/sizeof(index_array[0]), GL_UNSIGNED_SHORT, 0);
     texquads[i] -> Unbind ();
+  }
+
+  if (Util::blit) {
+    // Blit fbo to backbuffer
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
+    glFramebufferTexture(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, renderTexName, 0);
+    glReadBuffer(GL_COLOR_ATTACHMENT0);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    glDrawBuffer(GL_BACK);
+    glBlitFramebuffer(Util::blit_rect[0],  // x
+                      Util::blit_rect[1],  // y
+                      Util::blit_rect[0] + Util::blit_rect[2],  // x + w
+                      Util::blit_rect[1] + Util::blit_rect[3],  // y + h  ->  src sub-rect
+                      Util::blit_rect[0],  // x
+                      Util::blit_rect[1],  // y
+                      Util::blit_rect[0] + Util::blit_rect[2],  // x + w
+                      Util::blit_rect[1] + Util::blit_rect[3],  // y + h  ->  dst sub-rect
+                      GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, 0, 0);
   }
 }
 

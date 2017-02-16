@@ -42,7 +42,7 @@ namespace proto {
   int width = 11520;
   int height = 2160;
   int swap_interval = 0;
-  int gl_version = 3;
+  int gl_version = 4;
   bool do_arrange = false;
   bool do_mipmap = false;
   std::vector <std::string> image_paths;
@@ -55,6 +55,8 @@ namespace proto {
 using namespace proto;
 
 bool Util::in_test_mode = false;
+bool Util::blit = false;
+int Util::blit_rect[] = {0, 0, 0, 0};
 
 void help_msg (std::string prog)
 {
@@ -83,6 +85,18 @@ void validate_args ()
     gl_version = 3;
   if (!test_mode.empty())
     Util::in_test_mode = true;
+  if (Util::blit) {
+    if (Util::blit_rect[2] == 0 || Util::blit_rect[3] == 0) {
+      Util::blit_rect[2] = width;
+      Util::blit_rect[3] = height;
+    }
+    if (!Util::in_test_mode)
+      std::cout << "Blit rectangle is: " << Util::blit_rect[0] << ", "
+                                         << Util::blit_rect[1] << ", "
+                                         << Util::blit_rect[2] << ", "
+                                         << Util::blit_rect[3] << std::endl;
+  }
+
 }
 
 void parse_args (int argc, char* argv[])
@@ -93,30 +107,56 @@ void parse_args (int argc, char* argv[])
    {
      if (argv[i][0] == '-')
        {
-         if (!strcmp(argv[i], "-width"))
+         if (!strcmp(argv[i], "-width")) {
            width = atoi(argv[i+1]);
-         else if (!strcmp(argv[i], "-height"))
+           ++i;
+         }
+         else if (!strcmp(argv[i], "-height")) {
            height = atoi(argv[i+1]);
-         else if (!strcmp(argv[i], "-swap_interval"))
+           ++i;
+         }
+         else if (!strcmp(argv[i], "-swap_interval")) {
            swap_interval = atoi(argv[i+1]);
-         else if (!strcmp(argv[i], "-gl"))
+           ++i;
+         }
+         else if (!strcmp(argv[i], "-gl")) {
            gl_version = atoi(argv[i+1]);
-         else if (!strcmp(argv[i], "-i"))
+           ++i;
+         }
+         else if (!strcmp(argv[i], "-i")) {
            image_paths.push_back(argv[i+1]);
-         else if (!strcmp(argv[i], "-layout"))
+           ++i;
+         }
+         else if (!strcmp(argv[i], "-layout")) {
            do_arrange = (!strcmp(argv[i+1], "true")) ? true : false;
-         else if (!strcmp(argv[i], "-mipmap"))
+           ++i;
+         }
+         else if (!strcmp(argv[i], "-mipmap")) {
            do_mipmap = (!strcmp(argv[i+1], "true")) ? true : false;
-         else if (!strcmp(argv[i], "-testlength"))
+           ++i;
+         }
+         else if (!strcmp(argv[i], "-testlength")) {
            test_length = atof(argv[i+1]);
-         else if (!strcmp(argv[i], "-testmode"))
+           ++i;
+         }
+         else if (!strcmp(argv[i], "-testmode")) {
            test_mode = argv[i+1];
+           ++i;
+         }
+         else if (!strcmp(argv[i], "-blit")) {
+           Util::blit = true;
+         }
+         else if (!strcmp(argv[i], "-blit_rect")) {
+           Util::blit_rect[0] = atoi(argv[i+1]);
+           Util::blit_rect[1] = atoi(argv[i+2]);
+           Util::blit_rect[2] = atoi(argv[i+3]);
+           Util::blit_rect[3] = atoi(argv[i+4]);
+           i+=4;
+         }
          else if (!strcmp(argv[i], "-help") ||
                   !strcmp(argv[i], "--help"))
            help_msg (argv[0]);
 
-
-         ++i;
        }
    }
 }
@@ -231,7 +271,7 @@ int main (int argc, char* argv[])
   glfwGetFramebufferSize (window, &width, &height);
   glViewport (0, 0, width, height);
 
-  if (test_mode.empty())
+  if (!Util::in_test_mode)
    { int mon_count;
      GLFWmonitor** monitors = glfwGetMonitors (&mon_count);
      for (int i = 0; i < mon_count; ++i)
@@ -244,24 +284,29 @@ int main (int argc, char* argv[])
 
   glfwSetKeyCallback (window, key_callback);
   glfwSetCursorPosCallback (window, cursor_pos_callback);
+#ifndef NDEBUG
+  if (!Util::in_test_mode)
+  { printf ("%s\n", glGetString (GL_VERSION));
 
-#ifdef DEBUG
-  printf ("%s\n", glGetString (GL_VERSION));
+    if (glfwExtensionSupported ("GL_ARB_debug_output")) {
+      printf ("GL_ARB_debug_output is supported\n");
+      glDebugMessageCallbackARBPROC setDebugMsgCallback = 0;
+     setDebugMsgCallback =
+       (glDebugMessageCallbackARBPROC) glfwGetProcAddress ("glDebugMessageCallbackARB");
+     glDebugMessageControlARBPROC setDebugMsgControl = 0;
+     setDebugMsgControl =
+       (glDebugMessageControlARBPROC) glfwGetProcAddress ("glDebugMessageControlARB");
+     if (setDebugMsgCallback && setDebugMsgControl)
+       { glEnable (GL_DEBUG_OUTPUT_SYNCHRONOUS_ARB);
+         setDebugMsgCallback (gl_debug_spewer, NULL);
+         GLuint unusedIds = 0;
+         setDebugMsgControl (GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, &unusedIds, true);
+       }
+    }
 
-  if (glfwExtensionSupported ("GL_ARB_debug_output")) {
-    printf ("GL_ARB_debug_output is supported\n");
-    glDebugMessageCallbackARBPROC setDebugMsgCallback = 0;
-   setDebugMsgCallback =
-     (glDebugMessageCallbackARBPROC) glfwGetProcAddress ("glDebugMessageCallbackARB");
-   glDebugMessageControlARBPROC setDebugMsgControl = 0;
-   setDebugMsgControl =
-     (glDebugMessageControlARBPROC) glfwGetProcAddress ("glDebugMessageControlARB");
-   if (setDebugMsgCallback && setDebugMsgControl)
-     { glEnable (GL_DEBUG_OUTPUT_SYNCHRONOUS_ARB);
-       setDebugMsgCallback (gl_debug_spewer, NULL);
-       GLuint unusedIds = 0;
-       setDebugMsgControl (GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, &unusedIds, true);
-     }
+    GLint maxy = -1;
+    glGetIntegerv (GL_MAX_TEXTURE_SIZE, &maxy);
+    printf ("MAX Texture Size = %d\n", maxy);
   }
 #endif
 
@@ -285,7 +330,7 @@ int main (int argc, char* argv[])
       glfwPollEvents ();
     }
 
-  if (!test_mode.empty())
+  if (Util::in_test_mode)
    { float mean = std::accumulate(perf_data.begin(), perf_data.end(), 0.0f) /
                float(perf_data.size());
      std::cout << mean;
